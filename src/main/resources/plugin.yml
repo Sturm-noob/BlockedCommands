@@ -1,0 +1,9 @@
+name: BlockedCommands
+version: '${version}'
+main: me.sturm.blockedcommands.BlockedCommandsPlugin
+softdepend: [ PlaceholderAPI ]
+authors: [ sturm ]
+api-version: 1.16
+description: lol
+commands:
+  blockedcommands:

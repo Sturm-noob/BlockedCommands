@@ -1,0 +1,48 @@
+
+
+#поддерживается PlaceholderAPI
+#дефолтные плейсы: %x% %y% %z% %block-x% %block-y% %block-z% %world% %health% %level% %food% %kills% %deaths% %played-server%
+#операторы:
+#'='
+#'<='
+#'>='
+#'>'
+#'<'
+#'!=' - не равно
+#'==' - слабое равенство: на строках проверяет без учёта регистра, на числах проверяет, отличаются ли числаменьше чем на 1
+
+#'&&' - и
+#'||' - или
+#'!!' - не
+
+#проверка типов:
+#a = int
+#a = double
+#a = bool
+
+
+contexts:
+  isInNether: '%world% = world_nether'
+  hasntFourHealth: '%health% < 4'
+  isFar1000: '(x > 1000) && (z > 1000)'
+  hasntHourPlayed: '%played-server% < 72000'
+  always: 'true'
+  isInFight: "%fightplugin_fight% = inFight" #Плейсхолдер из вашего плагина на пвп
+
+
+commands:
+  "call":
+    contexts: [ isInNether, isFar1000 ]
+    message: "&bВы ушли слишком далеко в аду. Запросы на телепортацию недоступны."
+  "heal":
+    contexts: [isInFight]
+    message: "&cКоманда heal запрещена в бою!"
+  "op":
+    contexts: [always]
+    message: "&4Данная команда запрещена на сервере."
+  "msg":
+    contexts: [hasntHourPlayed]
+    message: "&cНеобходимо отыграть час на сервере"
+  "tp":
+    contexts: [hasntFourHealth]
+    message: "&bУ вас слишком мало здоровья"
