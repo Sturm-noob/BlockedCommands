@@ -2,6 +2,7 @@ package me.sturm.blockedcommands;
 
 import me.sturm.blockedcommands.context.EqualsMode;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 
 import java.util.LinkedList;
 
@@ -124,6 +125,10 @@ public class Utils {
 
     public static boolean isBoolean(String s) {
         return s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false");
+    }
+
+    public static String color(String message) {
+        return ChatColor.translateAlternateColorCodes('&', message);
     }
 
 }

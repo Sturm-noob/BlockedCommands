@@ -24,7 +24,10 @@
 contexts:
   isInNether: '%world% = world_nether'
   hasntFourHealth: '%health% < 4'
-  isFar1000: '(x > 1000) && (z > 1000)'
+  isFar1000: '(%x% > 1000) && (%z% > 1000)'
+  isFar2000: '(%x% > 2000) && (%z% > 2000)'
+  isFar10000: '(%x% > 10000) && (%z% > 10000)'
+  isSecretPos: '(%block-x% = -123456) && (%block-z% = -123456)'
   hasntHourPlayed: '%played-server% < 72000'
   always: 'true'
   isInFight: "%fightplugin_fight% = inFight" #Плейсхолдер из вашего плагина на пвп
@@ -33,7 +36,11 @@ contexts:
 commands:
   "call":
     contexts: [ isInNether, isFar1000 ]
-    message: "&bВы ушли слишком далеко в аду. Запросы на телепортацию недоступны."
+    message:
+      isSecretPos: "&bВы нашли пасхалку"
+      isFar10000: "&bВы ушли больше чем на 10000 блоков, там и оставайтесь."
+      isFar2000: "&cНа координатах >2000 телепортация невозможна"
+      default: "&cТелепорт запрещён"
   "heal":
     contexts: [isInFight]
     message: "&cКоманда heal запрещена в бою!"

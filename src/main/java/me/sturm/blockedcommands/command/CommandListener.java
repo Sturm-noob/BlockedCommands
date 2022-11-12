@@ -21,7 +21,7 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
     private final Map<BlockedCommand, List<Context>> contextsFromOtherPlugins = new HashMap<>();
     private final Map<String, Context> contextMap = new HashMap<>();
     private final Map<String, Context> contextsMapFromOtherPlugins = new HashMap<>();
-    private final Map<BlockedCommand, String> messages = new HashMap<>();
+    private final Map<BlockedCommand, Map<Context, String>> messages = new HashMap<>();
     private final boolean isPAPI;
     private final Plugin plugin;
 
@@ -42,9 +42,18 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
         }
         if (commandContexts == null || commandContexts.isEmpty()) return;
         boolean isCancelled = commandContexts.stream().anyMatch(context -> context.onContextRequest(player));
-        if (isCancelled) {
-            event.setCancelled(true);
-            if (messages.containsKey(cmd)) player.sendMessage(messages.get(cmd));
+        if (!isCancelled) return;
+
+        event.setCancelled(true);
+        Map<Context, String> messagesMap = this.messages.get(cmd);
+        if (messagesMap != null && !messagesMap.isEmpty()) {
+            for (Map.Entry<Context, String> contextEntry : messagesMap.entrySet()) {
+                if (contextEntry.getKey() != null && contextEntry.getKey().onContextRequest(player)) {
+                    player.sendMessage(contextEntry.getValue());
+                    return;
+                }
+            }
+            if (messagesMap.containsKey(null)) player.sendMessage(messagesMap.get(null));
         }
     }
 
@@ -68,15 +77,26 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
         for (String cmd : sec.getKeys(false)) {
             try {
                 List<Context> contextsCmd = new ArrayList<>();
-                String message = null;
+                Map<Context, String> messages = new LinkedHashMap<>();
                 if (sec.isString(cmd)) contextsCmd.add(getContextOrError(sec.getString(cmd)));
                 else if (sec.isConfigurationSection(cmd)) {
                     sec.getStringList(cmd+".contexts").forEach(contextID -> contextsCmd.add(getContextOrError(contextID)));
-                    message = ChatColor.translateAlternateColorCodes('&', sec.getString(cmd+".message"));
+                    if (sec.isString(cmd+".message")) messages.put(null, Utils.color(sec.getString(cmd+".message")));
+                    else if (sec.isConfigurationSection(cmd+".message")) {
+                        ConfigurationSection messageSection = sec.getConfigurationSection(cmd+".message");
+                        for (String messageContext : messageSection.getKeys(false)) {
+                            if (messageContext.equals("default")) {
+                                messages.put(null, Utils.color(messageSection.getString(messageContext)));
+                            }
+                            else {
+                                messages.put(getContextOrError(messageContext), Utils.color(messageSection.getString(messageContext)));
+                            }
+                        }
+                    }
                 }
                 else sec.getStringList(cmd).forEach(contextID -> contextsCmd.add(getContextOrError(contextID)));
                 BlockedCommand command = BlockedCommand.parseFromString(cmd);
-                if (message != null) messages.put(command, message);
+                if (!messages.isEmpty()) this.messages.put(command, messages);
                 this.contexts.put(command, contextsCmd);
             }
             catch (NullPointerException exception) {
@@ -96,7 +116,15 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
     }
 
     public void setBlockedMessage(BlockedCommand command, String message) {
-        this.messages.put(command, message);
+        this.messages.computeIfAbsent(command, k -> new LinkedHashMap<>()).put(null, message);
+    }
+
+    public void setBlockedMessage(BlockedCommand command, Context context, String message) {
+        this.messages.computeIfAbsent(command, k -> new LinkedHashMap<>()).put(context, message);
+    }
+
+    public Map<Context, String> getCommandMessages(BlockedCommand command) {
+        return this.messages.get(command);
     }
 
     public void addContext(BlockedCommand command, Context context, boolean fromOtherPlugin) {
