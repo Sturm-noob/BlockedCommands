@@ -17,8 +17,8 @@ import java.util.*;
 
 public class CommandListener implements Listener, CommandExecutor, TabCompleter {
 
-    private final Map<BlockedCommand, List<Context>> contexts = new HashMap<>();
-    private final Map<BlockedCommand, List<Context>> contextsFromOtherPlugins = new HashMap<>();
+    private final Map<BlockedCommand, List<String>> contexts = new HashMap<>();
+    private final Map<BlockedCommand, List<String>> contextsFromOtherPlugins = new HashMap<>();
     private final Map<String, Context> contextMap = new HashMap<>();
     private final Map<String, Context> contextsMapFromOtherPlugins = new HashMap<>();
     private final Map<BlockedCommand, Map<Context, String>> messages = new HashMap<>();
@@ -30,17 +30,31 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
         this.plugin = plugin;
     }
 
+    public List<Context> getCommandContexts(BlockedCommand cmd) {
+        List<Context> result = new ArrayList<>();
+        List<String> temp = this.contexts.get(cmd);
+        for (String contextID : temp) {
+            try {
+                result.add(this.getContextOrError(contextID));
+            }
+            catch (NullPointerException exception) {
+                exception.printStackTrace();
+            }
+        }
+        return result;
+    }
+
     @EventHandler
     public void onCommandExecute(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
         BlockedCommand cmd = BlockedCommand.parseFromString(event.getMessage().substring(1));
         PluginCommand plc = Bukkit.getPluginCommand(cmd.getCommandName());
         if (plc != null) cmd.setPlugin(plc.getPlugin().getName());
-        List<Context> commandContexts = this.contexts.get(cmd);
-        while (commandContexts == null && cmd.cutArg()) {
-            commandContexts = this.contexts.get(cmd);
+        List<Context> commandContexts = this.getCommandContexts(cmd);
+        while (commandContexts.isEmpty() && cmd.cutArg()) {
+            commandContexts = this.getCommandContexts(cmd);
         }
-        if (commandContexts == null || commandContexts.isEmpty()) return;
+        if (commandContexts.isEmpty()) return;
         boolean isCancelled = commandContexts.stream().anyMatch(context -> context.onContextRequest(player));
         if (!isCancelled) return;
 
@@ -76,11 +90,11 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
     void loadCommands(ConfigurationSection sec) {
         for (String cmd : sec.getKeys(false)) {
             try {
-                List<Context> contextsCmd = new ArrayList<>();
+                List<String> contextsCmd = new ArrayList<>();
                 Map<Context, String> messages = new LinkedHashMap<>();
-                if (sec.isString(cmd)) contextsCmd.add(getContextOrError(sec.getString(cmd)));
+                if (sec.isString(cmd)) contextsCmd.add(sec.getString(cmd));
                 else if (sec.isConfigurationSection(cmd)) {
-                    sec.getStringList(cmd+".contexts").forEach(contextID -> contextsCmd.add(getContextOrError(contextID)));
+                    sec.getStringList(cmd+".contexts").forEach(contextID -> contextsCmd.add(contextID));
                     if (sec.isString(cmd+".message")) messages.put(null, Utils.color(sec.getString(cmd+".message")));
                     else if (sec.isConfigurationSection(cmd+".message")) {
                         ConfigurationSection messageSection = sec.getConfigurationSection(cmd+".message");
@@ -94,7 +108,7 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
                         }
                     }
                 }
-                else sec.getStringList(cmd).forEach(contextID -> contextsCmd.add(getContextOrError(contextID)));
+                else sec.getStringList(cmd).forEach(contextID -> contextsCmd.add(contextID));
                 BlockedCommand command = BlockedCommand.parseFromString(cmd);
                 if (!messages.isEmpty()) this.messages.put(command, messages);
                 this.contexts.put(command, contextsCmd);
@@ -130,10 +144,10 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
     public void addContext(BlockedCommand command, Context context, boolean fromOtherPlugin) {
         Objects.requireNonNull(context.getName());
         contextMap.put(context.getName(), context);
-        contexts.computeIfAbsent(command, k -> new ArrayList<>()).add(context);
+        contexts.computeIfAbsent(command, k -> new ArrayList<>()).add(context.getName());
         if (fromOtherPlugin) {
             this.contextsMapFromOtherPlugins.put(context.getName(), context);
-            this.contextsFromOtherPlugins.computeIfAbsent(command, k -> new ArrayList<>()).add(context);
+            this.contextsFromOtherPlugins.computeIfAbsent(command, k -> new ArrayList<>()).add(context.getName());
         }
     }
 
