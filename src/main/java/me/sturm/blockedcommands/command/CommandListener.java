@@ -33,6 +33,7 @@ public class CommandListener implements Listener, CommandExecutor, TabCompleter 
     public List<Context> getCommandContexts(BlockedCommand cmd) {
         List<Context> result = new ArrayList<>();
         List<String> temp = this.contexts.get(cmd);
+        if (temp == null) return result;
         for (String contextID : temp) {
             try {
                 result.add(this.getContextOrError(contextID));
